@@ -30,7 +30,7 @@ npm run dev
 2. Run `backend/sql/001_schema.sql` then `002_seed_images.sql` in Supabase SQL editor
 3. Check http://localhost:3000/api/health
 
-Without credentials the app still runs with a **warning banner** and local fallback photos.
+Without credentials the app still runs with a **warning banner** and local fallback photos from `public/photos/`.
 
 ## API (Node.js backend)
 

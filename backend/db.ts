@@ -9,7 +9,6 @@ export function isDbConfigured() {
 }
 
 let dbClient: ReturnType<typeof createSupabaseClient<Database>> | null = null;
-let adminDbClient: ReturnType<typeof createSupabaseClient<Database>> | null = null;
 
 export function getDb() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -17,16 +16,4 @@ export function getDb() {
   if (!url || !key) return null;
   if (!dbClient) dbClient = createSupabaseClient<Database>(url, key);
   return dbClient;
-}
-
-export function getAdminDb() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!url || !key) return null;
-  if (!adminDbClient) {
-    adminDbClient = createSupabaseClient<Database>(url, key, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-  }
-  return adminDbClient;
 }

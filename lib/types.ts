@@ -84,12 +84,7 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: {
-      get_random_image: {
-        Args: { exclude_ids?: string[] };
-        Returns: GameImage[];
-      };
-    };
+    Functions: Record<string, never>;
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

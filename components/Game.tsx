@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Check,
@@ -12,8 +11,8 @@ import {
   Skull,
 } from "lucide-react";
 import { useGame } from "@/hooks/useGame";
-import { LABELS, LAST_SCORE_KEY } from "@/lib/game";
-import type { Guess, RoundResult, SessionStats } from "@/lib/types";
+import { LABELS } from "@/lib/game";
+import type { RoundResult, SessionStats } from "@/lib/types";
 
 export function Game() {
   const game = useGame();

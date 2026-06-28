@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  LABELS,
   LAST_SCORE_KEY,
   SESSION_SECONDS,
   score,
