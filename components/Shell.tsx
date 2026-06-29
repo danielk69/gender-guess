@@ -20,7 +20,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 font-bold">
-              <span>🧐</span> Gender Guesser
+              Gender Guesser
             </Link>
             <nav className="hidden gap-6 md:flex">
               {LINKS.map(({ href, label }) => (
