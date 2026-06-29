@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Check,
-  Dices,
   Flame,
   Hourglass,
   Skull,
@@ -62,7 +61,7 @@ export function Game() {
   return (
     <div className="pb-12">
       {game.warning && <Warning msg={game.warning} />}
-      <Hud stats={game.stats} secondsLeft={game.secondsLeft} mode="play" />
+      <Hud stats={game.stats} secondsLeft={game.secondsLeft} />
       {game.image && (
         <div className="mx-auto max-w-md px-4">
           <div className="relative mx-auto aspect-square max-w-xs overflow-hidden rounded-2xl shadow-md ring-1 ring-border">
@@ -97,36 +96,20 @@ function Warning({ msg }: { msg: string }) {
 function Hud({
   stats,
   secondsLeft,
-  mode,
-  onClose,
 }: {
   stats: SessionStats;
   secondsLeft: number;
-  mode: "play" | "results";
-  onClose?: () => void;
 }) {
-  const urgent = mode === "play" && secondsLeft <= 10;
+  const urgent = secondsLeft <= 10;
   return (
-    <div className="mx-auto flex max-w-xl items-center justify-between px-4 py-4">
-      {onClose ? (
-        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="Close">✕</button>
-      ) : (
-        <span className="w-5" />
-      )}
-      <div className="flex gap-5 text-sm text-muted">
-        {mode === "play" ? (
-          <span className={urgent ? "font-semibold text-red-500" : ""}>
-            <Hourglass className="mr-1 inline h-4 w-4" />
-            {secondsLeft}
-          </span>
-        ) : (
-          <span><Dices className="mr-1 inline h-4 w-4" />{stats.rounds}</span>
-        )}
-        <span><Check className="mr-1 inline h-4 w-4" />{stats.correct}</span>
-        <span><Skull className="mr-1 inline h-4 w-4" />{stats.wrong}</span>
-        <span><Flame className="mr-1 inline h-4 w-4" />{stats.streak}</span>
-      </div>
-      <span className="w-5" />
+    <div className="mx-auto flex max-w-xl items-center justify-center gap-5 px-4 py-4 text-sm text-muted">
+      <span className={urgent ? "font-semibold text-red-500" : ""}>
+        <Hourglass className="mr-1 inline h-4 w-4" />
+        {secondsLeft}
+      </span>
+      <span><Check className="mr-1 inline h-4 w-4" />{stats.correct}</span>
+      <span><Skull className="mr-1 inline h-4 w-4" />{stats.wrong}</span>
+      <span><Flame className="mr-1 inline h-4 w-4" />{stats.streak}</span>
     </div>
   );
 }
@@ -163,25 +146,18 @@ function Results({
 
   return (
     <div className="pb-16">
-      <Hud stats={stats} secondsLeft={0} mode="results" onClose={onPlayAgain} />
-      <div className="mx-auto grid max-w-3xl grid-cols-2 gap-3 px-4 sm:grid-cols-3">
-        {history.map((r, i) => (
-          <div key={`${r.image.id}-${i}`} className="overflow-hidden rounded-xl ring-1 ring-border">
-            <div className="relative aspect-square select-none">
-              <Image src={r.image.public_url} alt="" fill className="pointer-events-none object-cover" sizes="200px" draggable={false} />
-            </div>
-            <div className={`py-2 text-center text-xs text-white ${r.correct ? "bg-emerald-500" : "bg-red-500"}`}>
-              <p>Guess: {LABELS[r.guess]}</p>
-              <p>Answer: {LABELS[r.answer]}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mx-auto mt-10 max-w-sm px-4 text-center">
-        <p className="text-3xl font-bold">{stats.score}</p>
-        <p className="text-sm text-muted">{stats.correct}/{stats.rounds} correct</p>
+      <div className="mx-auto max-w-sm px-4 pt-10 text-center">
+        <p className="text-sm font-medium text-muted">Your score</p>
+        <p className="mt-1 text-5xl font-bold tabular-nums tracking-tight">{stats.score}</p>
+        <p className="mt-2 text-sm text-muted">
+          {stats.correct}/{stats.rounds} correct
+          {stats.maxStreak > 1 && (
+            <span> · best streak {stats.maxStreak}</span>
+          )}
+        </p>
+
         {!done && stats.rounds > 0 && (
-          <div className="mt-6 space-y-3">
+          <div className="mt-8 space-y-3">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -198,7 +174,7 @@ function Results({
                 setMsgOk(r.ok);
                 setMsg(r.message ?? r.error ?? "");
               }}
-              className="w-full rounded-xl bg-brand py-3 text-sm font-medium text-white disabled:opacity-40"
+              className="w-full rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand/90 disabled:opacity-40"
             >
               {phase === "submitting" ? "Submitting…" : "Submit to leaderboard"}
             </button>
@@ -207,13 +183,57 @@ function Results({
         {msg && (
           <p className={`mt-3 text-sm ${msgOk ? "text-emerald-600" : "text-amber-700"}`}>{msg}</p>
         )}
-        <button type="button" onClick={onPlayAgain} className="mt-4 text-sm text-brand hover:underline">
-          Play again
-        </button>
-        <Link href="/leaderboard" className="mt-2 block text-sm text-muted hover:text-brand">
-          View leaderboard →
-        </Link>
+
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={onPlayAgain}
+            className="w-full rounded-xl border border-border bg-white py-3 text-sm font-medium shadow-sm transition hover:border-brand hover:text-brand"
+          >
+            Play again
+          </button>
+          <Link href="/leaderboard" className="text-sm text-muted transition hover:text-brand">
+            View leaderboard →
+          </Link>
+        </div>
       </div>
+
+      {history.length > 0 && (
+        <div className="mx-auto mt-10 w-full max-w-5xl px-4 sm:px-6">
+          <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-muted">
+            Round history
+          </p>
+          <div className="max-h-80 overflow-y-auto rounded-2xl border border-border bg-gray-50/50 p-4 sm:max-h-[28rem]">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {history.map((r, i) => (
+                <div
+                  key={`${r.image.id}-${i}`}
+                  className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-border"
+                >
+                  <div className="relative aspect-square select-none">
+                    <Image
+                      src={r.image.public_url}
+                      alt=""
+                      fill
+                      className="pointer-events-none object-cover"
+                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 280px"
+                      draggable={false}
+                    />
+                  </div>
+                  <div
+                    className={`px-2 py-2 text-center text-xs leading-snug text-white ${
+                      r.correct ? "bg-emerald-500" : "bg-red-500"
+                    }`}
+                  >
+                    <p className="truncate">Guess: {LABELS[r.guess]}</p>
+                    <p className="truncate opacity-90">Answer: {LABELS[r.answer]}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

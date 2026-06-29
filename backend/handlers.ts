@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { getDb, isDbConfigured } from "./db";
+import { isValidScore } from "@/lib/game";
 import type { GameImage, LeaderboardEntry } from "@/lib/types";
 
 export type HealthStatus = {
@@ -208,7 +209,7 @@ export async function submitScore(entry: {
   if (entry.rounds_played <= 0) {
     return { ok: false as const, offline: false, error: "Invalid round count" };
   }
-  if (entry.score > entry.rounds_played * 100 + entry.max_streak * 25) {
+  if (!isValidScore(entry.score, entry.correct_count)) {
     return { ok: false as const, offline: false, error: "Invalid score" };
   }
 

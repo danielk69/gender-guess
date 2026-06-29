@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   LAST_SCORE_KEY,
+  pointsForCorrect,
   SESSION_SECONDS,
-  score,
   shuffle,
   toAnswer,
 } from "@/lib/game";
@@ -115,14 +115,14 @@ export function useGame() {
       setStats((prev) => {
         const streak = correct ? prev.streak + 1 : 0;
         const maxStreak = Math.max(prev.maxStreak, streak);
-        const correctCount = prev.correct + (correct ? 1 : 0);
+        const points = correct ? pointsForCorrect(prev.streak) : 0;
         return {
           rounds: prev.rounds + 1,
-          correct: correctCount,
+          correct: prev.correct + (correct ? 1 : 0),
           wrong: prev.wrong + (correct ? 0 : 1),
           streak,
           maxStreak,
-          score: score(correctCount, maxStreak),
+          score: prev.score + points,
         };
       });
       nextFromDeck();

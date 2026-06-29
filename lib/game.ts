@@ -3,8 +3,26 @@ export const LAST_SCORE_KEY = "gender-guesser-last-score";
 
 export const LABELS = { trans: "Transgender", cis: "Cisgender" } as const;
 
-export function score(correct: number, maxStreak: number) {
-  return correct * 100 + maxStreak * 25;
+/** Points earned on a correct guess: 1 + streak before the answer. */
+export function pointsForCorrect(streakBefore: number) {
+  return 1 + streakBefore;
+}
+
+/** Upper bound if every correct answer was consecutive. */
+export function maxPossibleScore(correctCount: number) {
+  return (correctCount * (correctCount + 1)) / 2;
+}
+
+/** Lower bound if every correct answer followed a wrong (streak always 0). */
+export function minPossibleScore(correctCount: number) {
+  return correctCount;
+}
+
+export function isValidScore(score: number, correctCount: number) {
+  return (
+    score >= minPossibleScore(correctCount) &&
+    score <= maxPossibleScore(correctCount)
+  );
 }
 
 export function toAnswer(isTransgender: boolean): "trans" | "cis" {
