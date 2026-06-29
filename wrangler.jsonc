@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gender-guess",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-06-28",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "gender-guess"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gender-guess",
+      "database_id": "fdded5bc-7475-40b8-a951-8746c82ba643",
+      "migrations_dir": "backend/sql"
+    }
+  ]
+}

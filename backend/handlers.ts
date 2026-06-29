@@ -11,6 +11,13 @@ export type HealthStatus = {
   warning: string | null;
 };
 
+type ImageRow = {
+  id: string;
+  storage_path: string;
+  public_url: string;
+  is_transgender: number;
+};
+
 let manifestCache: GameImage[] | null = null;
 let imagesCache: { images: GameImage[]; warning: string | null; at: number } | null = null;
 let leaderboardCache: { entries: LeaderboardEntry[]; at: number } | null = null;
@@ -19,6 +26,15 @@ const LEADERBOARD_CACHE_MS = 30 * 1000;
 
 function invalidateLeaderboardCache() {
   leaderboardCache = null;
+}
+
+function mapImage(row: ImageRow): GameImage {
+  return {
+    id: row.id,
+    storage_path: row.storage_path,
+    public_url: row.public_url,
+    is_transgender: Boolean(row.is_transgender),
+  };
 }
 
 async function loadManifestFallback(): Promise<GameImage[]> {
@@ -44,7 +60,7 @@ export async function getHealth(): Promise<HealthStatus> {
       imageCount: fallback.length,
       leaderboardOk: false,
       warning:
-        "Database not configured. Add Supabase credentials to .env.local and run backend/sql migrations.",
+        "Database not configured. Run `npm run db:migrate:local` for local dev, or deploy with a D1 binding.",
     };
   }
 
@@ -59,39 +75,48 @@ export async function getHealth(): Promise<HealthStatus> {
     };
   }
 
-  const [{ count, error: imgErr }, { error: lbErr }] = await Promise.all([
-    db.from("images").select("*", { count: "exact", head: true }),
-    db.from("leaderboard_entries").select("*", { count: "exact", head: true }),
-  ]);
+  try {
+    const [imageResult, leaderboardResult] = await Promise.all([
+      db.prepare("SELECT COUNT(*) AS count FROM images").first<{ count: number }>(),
+      db.prepare("SELECT COUNT(*) AS count FROM leaderboard_entries").first<{ count: number }>(),
+    ]);
 
-  const imageCount = count ?? 0;
-  let warning: string | null = null;
+    const imageCount = imageResult?.count ?? 0;
+    let warning: string | null = null;
 
-  if (imgErr) {
-    warning = `Images table error: ${imgErr.message}. Run backend/sql/001_schema.sql`;
-  } else if (imageCount === 0) {
-    const fallback = await loadManifestFallback().catch(() => []);
-    if (fallback.length > 0) {
-      warning =
-        "Database has no images yet. Using local fallback. Run backend/sql/002_seed_images.sql to seed.";
-      return {
-        configured: true,
-        connected: true,
-        imageCount: fallback.length,
-        leaderboardOk: !lbErr,
-        warning,
-      };
+    if (imageCount === 0) {
+      const fallback = await loadManifestFallback().catch(() => []);
+      if (fallback.length > 0) {
+        warning =
+          "Database has no images yet. Using local fallback. Run `npm run db:migrate:local` to seed.";
+        return {
+          configured: true,
+          connected: true,
+          imageCount: fallback.length,
+          leaderboardOk: leaderboardResult !== null,
+          warning,
+        };
+      }
+      warning = "No images in database. Run migrations to seed images.";
     }
-    warning = "No images in database. Upload images or run the seed SQL.";
-  }
 
-  return {
-    configured: true,
-    connected: !imgErr,
-    imageCount: imageCount || 0,
-    leaderboardOk: !lbErr,
-    warning,
-  };
+    return {
+      configured: true,
+      connected: true,
+      imageCount,
+      leaderboardOk: leaderboardResult !== null,
+      warning,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown database error";
+    return {
+      configured: true,
+      connected: false,
+      imageCount: 0,
+      leaderboardOk: false,
+      warning: `Database error: ${message}. Run backend/sql migrations via wrangler.`,
+    };
+  }
 }
 
 /** All images for a game session — fetched once from DB, manifest as fallback */
@@ -103,15 +128,23 @@ export async function getImages(): Promise<{ images: GameImage[]; warning: strin
   if (isDbConfigured()) {
     const db = getDb();
     if (db) {
-      const { data, error } = await db.from("images").select("id, storage_path, public_url, is_transgender");
-      if (!error && data && data.length > 0) {
-        const result = { images: data, warning: null as string | null };
-        imagesCache = { ...result, at: Date.now() };
-        return result;
-      }
-      if (error) {
+      try {
+        const { results } = await db
+          .prepare(
+            "SELECT id, storage_path, public_url, is_transgender FROM images"
+          )
+          .all<ImageRow>();
+
+        if (results.length > 0) {
+          const images = results.map(mapImage);
+          const result = { images, warning: null as string | null };
+          imagesCache = { ...result, at: Date.now() };
+          return result;
+        }
+      } catch (err) {
         const fallback = await loadManifestFallback().catch(() => []);
-        const warning = `Images table error: ${error.message}. Using local fallback.`;
+        const message = err instanceof Error ? err.message : "Unknown database error";
+        const warning = `Images table error: ${message}. Using local fallback.`;
         const result = { images: fallback, warning };
         if (fallback.length) imagesCache = { ...result, at: Date.now() };
         return result;
@@ -135,15 +168,23 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
 
   const db = getDb();
   if (!db) return [];
-  const { data } = await db
-    .from("leaderboard_entries")
-    .select("id, player_name, score, correct_count, rounds_played")
-    .order("score", { ascending: false })
-    .limit(50);
 
-  const entries = (data ?? []) as LeaderboardEntry[];
-  leaderboardCache = { entries, at: Date.now() };
-  return entries;
+  try {
+    const { results } = await db
+      .prepare(
+        `SELECT id, player_name, score, correct_count, wrong_count, max_streak, rounds_played, created_at
+         FROM leaderboard_entries
+         ORDER BY score DESC
+         LIMIT 50`
+      )
+      .all<LeaderboardEntry>();
+
+    const entries = results ?? [];
+    leaderboardCache = { entries, at: Date.now() };
+    return entries;
+  } catch {
+    return [];
+  }
 }
 
 export async function submitScore(entry: {
@@ -160,8 +201,43 @@ export async function submitScore(entry: {
   const db = getDb();
   if (!db) return { ok: false as const, offline: true, error: "Database unavailable" };
 
-  const { error } = await db.from("leaderboard_entries").insert(entry);
-  if (error) return { ok: false as const, offline: false, error: error.message };
-  invalidateLeaderboardCache();
-  return { ok: true as const };
+  const name = entry.player_name.trim();
+  if (name.length < 2 || name.length > 24) {
+    return { ok: false as const, offline: false, error: "Name must be 2–24 characters" };
+  }
+  if (entry.rounds_played <= 0) {
+    return { ok: false as const, offline: false, error: "Invalid round count" };
+  }
+  if (entry.score > entry.rounds_played * 100 + entry.max_streak * 25) {
+    return { ok: false as const, offline: false, error: "Invalid score" };
+  }
+
+  try {
+    const result = await db
+      .prepare(
+        `INSERT INTO leaderboard_entries
+         (id, player_name, score, correct_count, wrong_count, max_streak, rounds_played)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(
+        crypto.randomUUID(),
+        name,
+        entry.score,
+        entry.correct_count,
+        entry.wrong_count,
+        entry.max_streak,
+        entry.rounds_played
+      )
+      .run();
+
+    if (!result.success) {
+      return { ok: false as const, offline: false, error: "Failed to save score" };
+    }
+
+    invalidateLeaderboardCache();
+    return { ok: true as const };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to save score";
+    return { ok: false as const, offline: false, error: message };
+  }
 }

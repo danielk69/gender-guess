@@ -40,7 +40,7 @@ export function Game() {
       <div className="mx-auto max-w-md px-4 py-20 text-center">
         <h2 className="text-xl font-semibold">No images available</h2>
         <p className="mt-2 text-sm text-muted">
-          Configure Supabase in .env.local and run the SQL files in backend/sql/.
+          Run `npm run db:migrate:local` to set up the Cloudflare D1 database.
         </p>
         {game.warning && <Warning msg={game.warning} />}
       </div>

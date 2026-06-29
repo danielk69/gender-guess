@@ -1,19 +1,14 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/types";
-
-export function isDbConfigured() {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
-  );
-}
-
-let dbClient: ReturnType<typeof createSupabaseClient<Database>> | null = null;
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export function getDb() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-  if (!url || !key) return null;
-  if (!dbClient) dbClient = createSupabaseClient<Database>(url, key);
-  return dbClient;
+  try {
+    const { env } = getCloudflareContext();
+    return env.DB ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function isDbConfigured() {
+  return getDb() !== null;
 }

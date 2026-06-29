@@ -63,7 +63,10 @@ export function useGame() {
 
     try {
       const imgRes = await fetch("/api/images");
-      const { images, warning: imgWarn } = await imgRes.json();
+      const { images, warning: imgWarn } = (await imgRes.json()) as {
+        images?: GameImage[];
+        warning?: string | null;
+      };
       setWarning(imgWarn ?? null);
 
       if (!images?.length) {
@@ -147,7 +150,10 @@ export function useGame() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const body = await res.json();
+        const body = (await res.json()) as {
+          offline?: boolean;
+          error?: string;
+        };
         setPhase("results");
         if (!res.ok) {
           return {

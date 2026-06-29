@@ -22,7 +22,14 @@ export async function POST(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if (path.endsWith("/leaderboard")) {
-    const body = await request.json();
+    const body = (await request.json()) as {
+      player_name?: unknown;
+      score?: unknown;
+      correct_count?: unknown;
+      wrong_count?: unknown;
+      max_streak?: unknown;
+      rounds_played?: unknown;
+    };
     const result = await submitScore({
       player_name: String(body.player_name ?? "").trim(),
       score: Number(body.score),

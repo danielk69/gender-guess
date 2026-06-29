@@ -11,8 +11,9 @@ export function LeaderboardTable() {
     let cancelled = false;
     fetch("/api/leaderboard")
       .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((body: { entries: LeaderboardEntry[] }) => {
-        if (!cancelled) setEntries(body.entries ?? []);
+      .then((body) => {
+        const data = body as { entries?: LeaderboardEntry[] };
+        if (!cancelled) setEntries(data.entries ?? []);
       })
       .catch(() => {
         if (!cancelled) setError(true);
